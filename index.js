@@ -9,9 +9,22 @@ const routes = require('./routes/api');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://student-internship-portal-9p9d.vercel.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || '*',
+    origin: (origin, callback) => {
+      // Allow requests without an Origin header, such as health checks.
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Origin not allowed by CORS'));
+    },
   })
 );
 
@@ -26,7 +39,7 @@ app.get('/', (req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error('Server error:', err);
+  console.error('Server error:', err.message);
 
   if (res.headersSent) {
     return next(err);
@@ -40,9 +53,7 @@ app.use((err, req, res, next) => {
 async function startServer() {
   try {
     if (!process.env.MONGO_DB_URI) {
-      throw new Error(
-        'MONGO_DB_URI is missing. Configure it in your .env file.'
-      );
+      throw new Error('MONGO_DB_URI is missing.');
     }
 
     await mongoose.connect(process.env.MONGO_DB_URI);
